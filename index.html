@@ -1,0 +1,152 @@
+<!doctype html>
+<html lang="pt-BR">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+<title>Gestão JR</title>
+<meta name="description" content="Painel da equipe técnica JR Telecom Camaçari">
+<meta name="theme-color" content="#0b1a33">
+<link rel="manifest" href="manifest.webmanifest">
+<link rel="icon" href="icons/favicon.png">
+<link rel="apple-touch-icon" href="icons/apple-touch-icon.png">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-title" content="Gestão JR">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Barlow:wght@400;600&family=Barlow+Semi+Condensed:wght@700&display=swap">
+<style>
+:root{--bg:#0b1a33;--card:#12264a;--line:#24406e;--fg:#eef3fb;--mut:#a9b8d3;--acc:#f28c1e;--ok:#3ccf8e;--err:#ff7a6e;
+  --disp:"Barlow Semi Condensed","Arial Narrow",sans-serif;--body:"Barlow",system-ui,sans-serif;color-scheme:dark}
+*{box-sizing:border-box}
+html,body{margin:0;min-height:100%;background:var(--bg);color:var(--fg);font:16px/1.5 var(--body)}
+body{min-height:100vh;min-height:100dvh;display:grid}
+.w{width:100%;max-width:560px;margin:0 auto;padding:max(28px,env(safe-area-inset-top)) max(16px,env(safe-area-inset-right)) max(32px,env(safe-area-inset-bottom)) max(16px,env(safe-area-inset-left));display:grid;gap:16px;align-content:start}
+.topo{display:flex;align-items:center;gap:14px}
+.topo img{width:60px;height:60px;border-radius:50%}
+.topo b{font:700 28px/1 var(--disp);letter-spacing:.02em;display:block}
+.topo span{color:var(--mut);font-size:13px;letter-spacing:.14em;text-transform:uppercase}
+.estado{min-height:24px;color:var(--mut);margin:0}
+.estado.err{color:var(--err)} .estado.ok{color:var(--ok)}
+button,.bt{font:600 18px var(--body);border:0;border-radius:12px;padding:16px 18px;cursor:pointer;text-align:left;display:flex;align-items:center;gap:12px;width:100%;text-decoration:none}
+.pri{background:var(--acc);color:#0b1a33}
+.sec{background:var(--card);color:var(--fg);border:1px solid var(--line)}
+button:focus-visible,.bt:focus-visible,summary:focus-visible{outline:3px solid var(--fg);outline-offset:2px}
+.ic{font-size:22px;width:28px;text-align:center;flex:none}
+.bt small{display:block;font-weight:400;font-size:13px;opacity:.85}
+details{background:var(--card);border:1px solid var(--line);border-radius:12px;padding:4px 16px}
+summary{cursor:pointer;font:700 18px var(--disp);padding:12px 0;list-style-position:outside}
+details ol{margin:0 0 14px;padding-left:20px;display:grid;gap:6px}
+details p{margin:0 0 12px;color:var(--mut);font-size:14px}
+code{background:var(--bg);padding:1px 6px;border-radius:4px;font-size:14px}
+label.op{display:flex;gap:10px;align-items:center;color:var(--mut);font-size:15px;cursor:pointer}
+label.op input{width:20px;height:20px;accent-color:var(--acc)}
+.splash{position:fixed;inset:0;background:var(--bg);display:grid;place-items:center;z-index:9;transition:opacity .25s}
+.splash img{width:110px;height:110px;border-radius:50%;animation:p 1.4s ease-in-out infinite}
+.splash p{margin:12px 0 0;color:var(--mut);text-align:center}
+@keyframes p{50%{transform:scale(.94);opacity:.8}}
+@media (prefers-reduced-motion:reduce){.splash img{animation:none}}
+[hidden]{display:none!important}
+</style>
+</head>
+<body>
+<div class="splash" id="splash" hidden><div><img src="icons/icon-192.png" alt=""><p>Abrindo o Gestão JR…</p></div></div>
+
+<main class="w">
+  <div class="topo"><img src="icons/icon-192.png" alt="JR Telecom"><div><b>Gestão JR</b><span>Equipe técnica · Camaçari</span></div></div>
+  <p class="estado" id="estado" role="status"></p>
+
+  <button class="pri" id="bInstalar" hidden><span class="ic">⤓</span>Instalar o app neste aparelho</button>
+
+  <a class="bt pri" id="bSistema" href="#"><span class="ic">▶</span><span>Abrir Gestão JR<small>Painel, ponto, tarefas e relatórios</small></span></a>
+  <a class="bt sec" id="bMonitor" href="https://app.ahgora.com.br/justificativa" target="_blank" rel="noopener"><span class="ic">⏱</span><span>Monitor do Ahgora<small>Abre o Ahgora para a leitura do TOTVS a cada minuto</small></span></a>
+
+  <label class="op"><input type="checkbox" id="auto" checked> Abrir o sistema direto quando eu tocar no app</label>
+
+  <details id="dInst">
+    <summary>Como instalar o app</summary>
+    <p><b>Celular (Chrome):</b></p>
+    <ol><li>Toque em <b>⋮</b> no canto de cima.</li><li>Toque em <b>Adicionar à tela inicial</b> → <b>Instalar</b>.</li><li>O ícone <b>Gestão JR</b> aparece junto com os seus apps.</li></ol>
+    <p><b>Computador (Chrome):</b></p>
+    <ol><li>Clique no ícone de instalar na barra de endereço (monitor com seta) ou em <b>⋮ → Transmitir, salvar e compartilhar → Instalar página como app</b>.</li><li>O Gestão JR abre em janela própria e fica no menu Iniciar.</li></ol>
+  </details>
+
+  <details id="dMon">
+    <summary>Como instalar o monitor</summary>
+    <p><b>Computador (recomendado, liga sozinho):</b></p>
+    <ol>
+      <li>Instale a extensão <b>Tampermonkey</b> no Chrome (Chrome Web Store). Em <code>chrome://extensions</code>, abra os detalhes do Tampermonkey e ligue <b>Permitir scripts do usuário</b>.</li>
+      <li>Toque aqui: <a href="monitor-ponto-jr.user.js" style="color:var(--acc)">instalar o Monitor Ponto JR</a> → <b>Instalar</b>.</li>
+      <li>No Gestão JR, clique em <b>Atualizar sistema → Gerar o favorito Leitor Ponto JR</b>. Clique com o botão direito no botão laranja → <b>Copiar endereço do link</b>.</li>
+      <li>Abra o Ahgora pelo botão <b>Monitor do Ahgora</b>, entre com o seu usuário, cole o código na caixa que aparece e clique em <b>Salvar e ligar</b>.</li>
+      <li>Pronto: toda vez que o Ahgora abrir, o monitor liga sozinho. Deixe essa aba aberta.</li>
+    </ol>
+    <p><b>Celular:</b> o Chrome do celular não roda o monitor sozinho. Toque em <b>Monitor do Ahgora</b>, entre, digite <code>Leitor Ponto JR</code> na barra de endereço e toque no favorito. Deixe a tela ligada.</p>
+  </details>
+</main>
+
+<script>
+(function () {
+  'use strict';
+  /* link oficial do sistema (o mesmo do navegador; o código do Apps Script não é alterado) */
+  var URL_SISTEMA = 'https://script.google.com/a/macros/jrtelecom.com.br/s/AKfycbyGp-bg-z5BxPMziIJCuK0F5SKV7tC_jBryk8LAaQaAna1U2cy8zz391hvHCwA8v-4ZNA/exec';
+  var URL_AHGORA = 'https://app.ahgora.com.br/justificativa';
+
+  var $ = function (id) { return document.getElementById(id); };
+  var estado = function (t, cls) { var e = $('estado'); e.textContent = t || ''; e.className = 'estado' + (cls ? ' ' + cls : ''); };
+  var ler = function (k, d) { try { var v = localStorage.getItem(k); return v === null ? d : v; } catch (e) { return d; } };
+  var gravar = function (k, v) { try { localStorage.setItem(k, v); } catch (e) {} };
+  var sLer = function (k) { try { return sessionStorage.getItem(k); } catch (e) { return null; } };
+  var sGravar = function (k, v) { try { sessionStorage.setItem(k, v); } catch (e) {} };
+
+  var instalado = (window.matchMedia && (matchMedia('(display-mode: standalone)').matches || matchMedia('(display-mode: window-controls-overlay)').matches || matchMedia('(display-mode: minimal-ui)').matches)) || window.navigator.standalone === true;
+  var q = new URLSearchParams(location.search);
+
+  function abrirSistema() {
+    if (!navigator.onLine) { semInternet(); return; }
+    sGravar('jr_abriu', '1');
+    $('splash').hidden = false;
+    estado('Abrindo o sistema…');
+    location.assign(URL_SISTEMA);
+    /* se algo travar a abertura, volta a mostrar os botões */
+    setTimeout(function () { $('splash').hidden = true; estado('Se o sistema não abriu, toque em Abrir Gestão JR de novo.', 'err'); }, 15000);
+  }
+  function abrirMonitor() { window.open(URL_AHGORA, '_blank', 'noopener'); }
+
+  function semInternet() {
+    $('splash').hidden = true;
+    estado('Sem internet agora. O sistema abre sozinho assim que a conexão voltar.', 'err');
+    var volta = function () { window.removeEventListener('online', volta); estado('Conexão de volta.', 'ok'); abrirSistema(); };
+    window.addEventListener('online', volta);
+  }
+
+  $('bSistema').href = URL_SISTEMA;
+  $('bSistema').addEventListener('click', function (e) { e.preventDefault(); abrirSistema(); });
+  $('auto').checked = ler('jr_auto', '1') === '1';
+  $('auto').addEventListener('change', function () { gravar('jr_auto', this.checked ? '1' : '0'); });
+
+  /* botão de instalar (Chrome mostra quando o app ainda não está instalado) */
+  var pedido = null;
+  window.addEventListener('beforeinstallprompt', function (e) { e.preventDefault(); pedido = e; $('bInstalar').hidden = false; });
+  $('bInstalar').addEventListener('click', function () {
+    if (!pedido) return; pedido.prompt();
+    pedido.userChoice.then(function (r) { if (r.outcome === 'accepted') estado('App instalado. Procure o ícone Gestão JR.', 'ok'); $('bInstalar').hidden = true; pedido = null; }).catch(function () {});
+  });
+  window.addEventListener('appinstalled', function () { $('bInstalar').hidden = true; estado('App instalado. Procure o ícone Gestão JR.', 'ok'); });
+
+  if (instalado) { $('dInst').hidden = true; } else { estado('Instale o app para abrir o Gestão JR direto da tela inicial.'); }
+
+  /* atalhos do ícone (segurar o ícone do app) */
+  if (q.get('abrir') === 'monitor') { history.replaceState(null, '', './'); abrirMonitor(); }
+  else if (q.get('abrir') === 'sistema') { history.replaceState(null, '', './'); abrirSistema(); }
+  /* ao tocar no app: abre o sistema direto, uma vez por abertura (voltar mostra estes botões, sem ficar em ciclo) */
+  else if (instalado && ler('jr_auto', '1') === '1' && !sLer('jr_abriu')) { abrirSistema(); }
+
+  /* voltou do sistema pelo botão voltar/fechar: só mostra os botões */
+  window.addEventListener('pageshow', function (e) { if (e.persisted) { $('splash').hidden = true; estado(''); } });
+
+  if ('serviceWorker' in navigator) {
+    window.addEventListener('load', function () { navigator.serviceWorker.register('sw.js').catch(function () {}); });
+  }
+})();
+</script>
+</body>
+</html>
