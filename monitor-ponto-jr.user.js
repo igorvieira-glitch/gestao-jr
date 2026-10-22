@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         Monitor Ponto JR
 // @namespace    jrtelecom-camacari
-// @version      1.0.0
+// @version      1.1.0
 // @description  Liga sozinho o Leitor Ponto JR quando o Ahgora abre (lê o TOTVS a cada minuto e envia ao Gestão JR)
 // @match        https://app.ahgora.com.br/*
 // @run-at       document-idle
@@ -63,13 +63,34 @@
     if (j === null) j = { BATIDAS: {} };
     S.cache[k] = { t: Date.now(), j: j }; return j;
   }
-  async function ler() {
-    var a = agoraSP(), per = periodo(a), cols = [];
-    for (var i = 0; i < CFG.tecnicos.length; i++) {
-      var c = CFG.tecnicos[i], dias = {};
-      status('Lendo ' + (i + 1) + ' de ' + CFG.tecnicos.length + '…');
-      for (var q = 0; q < per.meses.length; q++) {
-        var mm = per.meses[q], j = await mes(c.m, mm.ano, mm.mes, mm.ano === a.y && mm.mes === a.m);
+  var espera = function (ms) { return new Promise(function (r) { setTimeout(r, ms); }); };
+  /* relatório oficial de batidas ímpares do Ahgora (todos os funcionários de uma vez).
+     O Ahgora gera em segundo plano e pode levar de segundos a alguns minutos: o leitor pede um, acompanha sem segurar
+     a leitura do minuto e usa sempre o último pronto. Pede um novo no máximo a cada 5 min; se travar por 12 min, recomeça. */
+  S.rep = { pid: null, inicio: 0, dados: null, em: '', pedindo: false };
+  async function cuidaRelatorio(a) {
+    try {
+      if (S.rep.pid) {
+        var st = await json('/ah-reports/pools/' + S.rep.pid + '/status');
+        if (st && (st.endedAt || st.poolStatus === 100)) {
+          var rp = await json('/ah-reports/pools/' + S.rep.pid + '/batidas_impares_novo?employeeReportFields=');
+          S.rep.dados = ((rp && rp.data && rp.data.content) || []).map(function (x) { return { m: String(x['Matrícula'] || ''), n: String(x.Nome || ''), dia: String(x.Dia || ''), b: String(x.Batidas || '') }; });
+          S.rep.em = new Date().toISOString(); S.rep.pid = null;
+        } else if (Date.now() - S.rep.inicio > 12 * 60000) S.rep.pid = null;
+      }
+      if (!S.rep.pid && !S.rep.pedindo && Date.now() - S.rep.inicio > 5 * 60000) {
+        var cy = a.y, cm = a.m; if (a.d >= 26) { cm++; if (cm > 12) { cm = 1; cy++; } }
+        var comp = cy + '-' + pad(cm); S.rep.pedindo = true; S.rep.inicio = Date.now();
+        fetch('/dynamicReport/customPool?startCompetence=' + comp + '&endCompetence=' + comp + '&reports=batidas_impares_novo', { credentials: 'include' })
+          .then(function (r) { var pid = new URL(r.url).searchParams.get('poolId'); if (pid) S.rep.pid = pid; })
+          .catch(function () {}).then(function () { S.rep.pedindo = false; });
+      }
+    } catch (e) { if (e.message === 'sessao') throw e; }
+  }
+  async function lerTecnico(c, a, per) {
+    var dias = {};
+    for (var q = 0; q < per.meses.length; q++) {
+      var mm = per.meses[q], j = await mes(c.m, mm.ano, mm.mes, mm.ano === a.y && mm.mes === a.m);
         var B = j.BATIDAS || {};
         Object.keys(B).forEach(function (d) {
           if (d < per.ini || d > per.fim) return;
@@ -82,13 +103,26 @@
           };
         });
       }
-      cols.push({ m: c.m, n: c.n, dias: dias });
-    }
+    return { m: c.m, n: c.n, dias: dias };
+  }
+  async function ler() {
+    var a = agoraSP(), per = periodo(a), t0 = Date.now(), feitos = 0, fila = CFG.tecnicos.slice(), cols = new Array(CFG.tecnicos.length);
+    status('Lendo ' + CFG.tecnicos.length + ' técnicos e os relatórios do Ahgora…');
+    var pRel = cuidaRelatorio(a).catch(function () {});        /* relatório oficial: em segundo plano, nunca segura a leitura */
+    await Promise.all([0, 1, 2, 3, 4, 5].map(async function () {
+      while (fila.length) {
+        var i = CFG.tecnicos.length - fila.length, c = fila.shift();
+        cols[i] = await lerTecnico(c, a, per); feitos++;
+        status('Lendo técnicos: ' + feitos + ' de ' + CFG.tecnicos.length + '…');
+      }
+    }));
     var pj = await json('/justificativa/getTableMigrado', { method: 'POST', headers: { 'Content-Type': 'application/x-www-form-urlencoded', 'X-Requested-With': 'XMLHttpRequest' }, body: 'data_inicial=' + brd(per.ini) + '&data_final=' + brd(per.fim) + '&limit=500' });
     var pend = (pj.aaData || []).filter(function (p) { return p.status === 'Pendente'; }).map(function (p) {
       return { nome: p.nome, data: p.data_batida, hora: p.details, just: String(p.informacao || '').trim().slice(0, 300), em: p.horario_da_justificativa, tipo: p.tipo_solicitacao, id: p.justifyId };
     });
-    return { v: 1, lidoEm: new Date().toISOString(), lidoEmTxt: a.txt, hoje: a.iso, agora: a.hm, periodo: { ini: per.ini, fim: per.fim }, colaboradores: cols, pendentes: pend };
+    await Promise.race([pRel, espera(3000)]);
+    S.seg = Math.round((Date.now() - t0) / 100) / 10; S.imp = S.rep.dados ? S.rep.dados.length : null;
+    return { v: 2, lidoEm: new Date().toISOString(), lidoEmTxt: a.txt, hoje: a.iso, agora: a.hm, periodo: { ini: per.ini, fim: per.fim }, colaboradores: cols, pendentes: pend, impares: S.rep.dados, imparesEm: S.rep.em };
   }
   function enviarJanela(obj) {
     if (!pop || pop.closed) pop = window.open('', ALVO, 'width=480,height=360');
@@ -105,6 +139,7 @@
         var antes = new Date(Date.now() - 5000).toISOString();
         await fetch(CFG.url, { method: 'POST', mode: 'no-cors', body: corpo, credentials: 'include' });
         var cf = await fetch(CFG.url + '?leitor_ok=' + encodeURIComponent(CFG.chave), { credentials: 'omit' }).then(function (r) { return r.json(); });
+        if (cf && cf.v && CFG.v && cf.v !== CFG.v) S.velho = true;
         if (cf && cf.ok && cf.em >= antes) { S.via = 'direto'; try { if (pop && !pop.closed) pop.close(); } catch (x) {} pop = null; return 'direto'; }
       } catch (e) {}
     }
@@ -121,7 +156,7 @@
     if (S.rodando) return; S.rodando = true;
     try {
       var r = await ler(); var via = await enviar(r); S.ultima = r.lidoEmTxt.slice(11); S.erro = '';
-      status('Enviado às ' + S.ultima + ' · ' + r.pendentes.length + ' pedido(s) pendente(s). Próxima leitura em 1 min. ' + (CEL ? 'Deixe esta aba aberta e a tela ligada.' : 'Deixe esta aba aberta.'), '#3ccf8e');
+      status((S.velho ? '⚠ Favorito desatualizado: no Gestão JR, Atualizar sistema → Gerar o favorito de novo. ' : '') + 'Enviado às ' + S.ultima + ' (leitura em ' + String(S.seg).replace('.', ',') + ' s) · ' + r.pendentes.length + ' pedido(s) pendente(s)' + (S.imp != null ? ' · relatório de ímpares do Ahgora de ' + new Date(S.rep.em).toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' }) + ': ' + S.imp : (S.rep.pid ? ' · relatório de ímpares do Ahgora sendo gerado' : '')) + '. Próxima leitura em 1 min. ' + (CEL ? 'Deixe esta aba aberta e a tela ligada.' : 'Deixe esta aba aberta.'), S.velho ? '#ffb347' : '#3ccf8e');
     } catch (e) {
       S.erro = e.message;
       if (e.message === 'sessao') status('A sessão do Ahgora expirou. Entre de novo e clique no favorito.', '#ff7a6e');
@@ -189,7 +224,7 @@
     if (telaLogin() || outraAbaLendo()) return;
     if (window.__pjr) { ligado = true; batimento(); return; }      /* favorito já rodando nesta aba */
     ligado = true; batimento();
-    try { LEITOR(cfg); } catch (e) { ligado = false; console.error('Monitor Ponto JR', e); }
+    try { LEITOR(Object.assign({}, cfg, { v: null })); } catch (e) { ligado = false; console.error('Monitor Ponto JR', e); }
   }
 
   /* sessão do Ahgora caiu: recarrega (no máximo a cada 10 min) para voltar a ler depois do login */
