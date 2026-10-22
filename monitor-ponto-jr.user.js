@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         Monitor Ponto JR
 // @namespace    jrtelecom-camacari
-// @version      1.1.0
+// @version      1.2.0
 // @description  Liga sozinho o Leitor Ponto JR quando o Ahgora abre (lê o TOTVS a cada minuto e envia ao Gestão JR)
 // @match        https://app.ahgora.com.br/*
 // @run-at       document-idle
@@ -109,6 +109,14 @@
     var a = agoraSP(), per = periodo(a), t0 = Date.now(), feitos = 0, fila = CFG.tecnicos.slice(), cols = new Array(CFG.tecnicos.length);
     status('Lendo ' + CFG.tecnicos.length + ' técnicos e os relatórios do Ahgora…');
     var pRel = cuidaRelatorio(a).catch(function () {});        /* relatório oficial: em segundo plano, nunca segura a leitura */
+    /* espelhos de ponto "Aguardando aprovação" (quadro Gerenciar Espelhos do painel: última competência encerrada) */
+    var pEsp = json('/dashboard/espelhos').then(function (j) {
+      var g = (j && j.graphicData) || [], d = (j && j.dataDetails) || [], gi = -1;
+      g.forEach(function (x, k) { if (gi < 0 && /aguard/i.test(String(x && x[0]))) gi = k; }); if (gi < 0) gi = 0;
+      var lst = Array.isArray(d[gi]) ? d[gi] : [];
+      return { total: j && j.fraction ? (+j.fraction[1] || 0) : 0, aguardando: lst.filter(function (x) { return x && x.nome; }).map(function (x) {
+        return { m: String(x.matricula || ''), n: String(x.nome || '').replace(/\s*\(\d+\)\s*$/, '').trim(), de: String(x.data_inicial || ''), ate: String(x.data_final || ''), mes: String(x.mes || ''), ano: String(x.ano || '') }; }) };
+    }, function () { return null; });
     await Promise.all([0, 1, 2, 3, 4, 5].map(async function () {
       while (fila.length) {
         var i = CFG.tecnicos.length - fila.length, c = fila.shift();
@@ -120,9 +128,10 @@
     var pend = (pj.aaData || []).filter(function (p) { return p.status === 'Pendente'; }).map(function (p) {
       return { nome: p.nome, data: p.data_batida, hora: p.details, just: String(p.informacao || '').trim().slice(0, 300), em: p.horario_da_justificativa, tipo: p.tipo_solicitacao, id: p.justifyId };
     });
+    var esp = await pEsp;
     await Promise.race([pRel, espera(3000)]);
     S.seg = Math.round((Date.now() - t0) / 100) / 10; S.imp = S.rep.dados ? S.rep.dados.length : null;
-    return { v: 2, lidoEm: new Date().toISOString(), lidoEmTxt: a.txt, hoje: a.iso, agora: a.hm, periodo: { ini: per.ini, fim: per.fim }, colaboradores: cols, pendentes: pend, impares: S.rep.dados, imparesEm: S.rep.em };
+    return { v: 2, lidoEm: new Date().toISOString(), lidoEmTxt: a.txt, hoje: a.iso, agora: a.hm, periodo: { ini: per.ini, fim: per.fim }, colaboradores: cols, pendentes: pend, impares: S.rep.dados, imparesEm: S.rep.em, espelhos: esp };
   }
   function enviarJanela(obj) {
     if (!pop || pop.closed) pop = window.open('', ALVO, 'width=480,height=360');
